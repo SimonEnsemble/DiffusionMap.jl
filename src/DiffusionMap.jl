@@ -48,7 +48,7 @@ X̂ = diff_map(X, kernel, 1)
 ```
 """
 function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
-    if ! size(P)[1] == size(P)[2]
+    if ! (size(P)[1] == size(P)[2])
         error("this should be a SQUARE right-stochastic matrix")
     end
     if ! all(sum.(eachrow(P)) .≈ 1.0)
