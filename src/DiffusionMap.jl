@@ -1,5 +1,5 @@
 module DiffusionMap
-using LinearAlgebra
+using LinearAlgebra, StatsBase
 
 export normalize_to_stochastic_matrix!, diffusion_map
 
@@ -31,8 +31,26 @@ two call signatures.
 # arguments
 * `d`: dim
 * `t`: # of steps
+
+# example
+```julia
+# define kernel
+function kernel(xⱼ, xᵢ; ℓ=0.5)
+    r² = sum((xᵢ - xⱼ) .^ 2)
+    return exp(-r² / ℓ ^ 2)
+end
+
+# data matrix (100 data pts, 2D vectors)
+X = rand(2, 100)
+
+# diffusion map to 1D
+X̂ = diff_map(X, kernel, 1)
+```
 """
 function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
+    if ! size(P)[1] == size(P)[2]
+        error("this should be a SQUARE right-stochastic matrix")
+    end
     if ! all(sum.(eachrow(P)) .≈ 1.0)
         error("not a right-stochastic matrix. use normalize_to_stochastic_matrix.")
     end
@@ -57,7 +75,11 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
     return Vs
 end
 
-function diffusion_map(X::Matrix{Float64}, kernel::Function, d::Int; t::Int=1)
+function diffusion_map(X::Matrix{Float64}, kernel::Function, d::Int; t::Int=1, verbose::Bool=true)
+    if verbose
+        println("# features: ", size(X)[1])
+        println("# examples: ", size(X)[2])
+    end
     # compute Laplacian matrix
     P = pairwise(kernel, eachcol(X), symmetric=true)
     normalize_to_stochastic_matrix!(P)
