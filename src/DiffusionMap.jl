@@ -66,7 +66,7 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
     # eigen-decomposition of the stochastic matrix
     eigen_decomp = eigen(P)
 
-    if ! (abs(maximum(eigen_decomp.values) - 1.0) < 0.0001)
+    if ! ((maximum(abs.(eigen_decomp.values)) - 1.0) < 0.0001)
         error("largest eigenvalue should be 1.0")
     end
 
