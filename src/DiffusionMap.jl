@@ -1,7 +1,12 @@
 module DiffusionMap
 using LinearAlgebra, StatsBase
 
-export normalize_to_stochastic_matrix!, diffusion_map
+export normalize_to_stochastic_matrix!, diffusion_map, gaussian_kernel, pca
+
+function gaussian_kernel(xⱼ, xᵢ, ℓ)
+    r² = sum((xᵢ - xⱼ) .^ 2)
+    return exp(-r² / ℓ ^ 2)
+end
 
 """
     normalize_to_stochastic_matrix!(P)
@@ -54,7 +59,7 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
     if ! all(sum.(eachrow(P)) .≈ 1.0)
         error("not a right-stochastic matrix. use normalize_to_stochastic_matrix.")
     end
-    if ! all(P .> 0.0)
+    if ! all(P .>= 0.0)
         error("should be positive entries...")
     end
 
@@ -85,6 +90,20 @@ function diffusion_map(X::Matrix{Float64}, kernel::Function, d::Int; t::Int=1, v
     normalize_to_stochastic_matrix!(P)
 
     return diffusion_map(P, d; t=t)
+end
+
+function pca(X::Matrix{Float64}, d::Int)
+    println("# features: ", size(X)[1])
+    println("# examples: ", size(X)[2])
+
+    # center
+    X̂ = deepcopy(X)
+    for f = 1:size(X)[1]
+        X̂[f, :] = X[f, :] .- mean(X[f, :])
+    end
+
+    the_svd = svd(X̂)
+    return the_svd.V[:, 1:d] * diagm(the_svd.S[1:d])
 end
 
 end
