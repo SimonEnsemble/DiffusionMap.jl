@@ -3,17 +3,23 @@ using LinearAlgebra, StatsBase
 
 export normalize_to_stochastic_matrix!, diffusion_map, gaussian_kernel, pca
 
-function gaussian_kernel(xⱼ, xᵢ, ℓ)
+function gaussian_kernel(xⱼ, xᵢ, ℓ::Float64)
     r² = sum((xᵢ - xⱼ) .^ 2)
     return exp(-r² / ℓ ^ 2)
 end
 
 """
-    normalize_to_stochastic_matrix!(P)
+    normalize_to_stochastic_matrix!(P, check_symmetry=true)
 
-normalize a kernel matrix `p` so that rows sum to one.
+normalize a kernel matrix `P` so that rows sum to one.
+
+checks for symmetry.
 """
-function normalize_to_stochastic_matrix!(P::Matrix{Float64})
+function normalize_to_stochastic_matrix!(P::Matrix{Float64}; 
+                                         check_symmetry::Bool=true)
+    if check_symmetry && (! all(isapprox.(P - P', 0.0; rtol=1e-8)))
+        error("kernel matrix not symmetric!")
+    end
     # make sure rows sum to one
     # this is equivalent to P = D⁻¹ * P
     #    with > d = vec(sum(P, dims=1))
@@ -29,9 +35,9 @@ end
 
 compute diffusion map. 
 
-two call signatures.
+two call signatures:
 * the data matrix `X` is passed in. examples are in the columns.
-* the right-stochastic matrix `P` is passed in. (eg. for precomputed kernel matrix)
+* the right-stochastic matrix `P` is passed in. (eg. for a precomputed kernel matrix)
 
 # arguments
 * `d`: dim
@@ -40,10 +46,7 @@ two call signatures.
 # example
 ```julia
 # define kernel
-function kernel(xⱼ, xᵢ; ℓ=0.5)
-    r² = sum((xᵢ - xⱼ) .^ 2)
-    return exp(-r² / ℓ ^ 2)
-end
+kernel(xᵢ, xⱼ) = gaussian_kernel(xᵢ, xⱼ, 0.5)
 
 # data matrix (100 data pts, 2D vectors)
 X = rand(2, 100)
@@ -57,7 +60,7 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
         error("this should be a SQUARE right-stochastic matrix")
     end
     if ! all(sum.(eachrow(P)) .≈ 1.0)
-        error("not a right-stochastic matrix. use normalize_to_stochastic_matrix.")
+        error("not a right-stochastic matrix. call normalize_to_stochastic_matrix!")
     end
     if ! all(P .>= 0.0)
         error("should be positive entries...")
@@ -80,11 +83,13 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
     return Vs
 end
 
-function diffusion_map(X::Matrix{Float64}, kernel::Function, d::Int; t::Int=1, verbose::Bool=true)
+function diffusion_map(X::Matrix{Float64}, kernel::Function, 
+                       d::Int; t::Int=1, verbose::Bool=true)
     if verbose
         println("# features: ", size(X)[1])
         println("# examples: ", size(X)[2])
     end
+
     # compute Laplacian matrix
     P = pairwise(kernel, eachcol(X), symmetric=true)
     normalize_to_stochastic_matrix!(P)
