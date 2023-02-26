@@ -1,5 +1,5 @@
 module Test_DiffusionMap
-using DiffusionMap, LinearAlgebra, Test
+using DiffusionMap, IOCapture, LinearAlgebra, Test
 
 @testset "normalize_to_stochastic_matrix!" begin
     # generate random symmetric matrix
@@ -33,13 +33,19 @@ end
     # function signature 2: diffusion_map(X, kernel, d, t=1)
     @testset "matrix X and kernel" begin
         kernel(xᵢ, xⱼ) = gaussian_kernel(xᵢ, xⱼ, 0.5)
-        @test isapprox(sum(diffusion_map(ones(20, 20), kernel, 2)), 0; atol=1e-9)
+        result = IOCapture.capture() do
+            return sum(diffusion_map(ones(20, 20), kernel, 2))
+        end
+        @test isapprox(result.value, 0; atol=1e-9)
     end
 end
 
 @testset "pca" begin
     # test a trivial case
-    @test pca(ones(10, 10), 2) == zeros(10, 2)
+    result = IOCapture.capture() do 
+        return pca(ones(10, 10), 2)
+    end
+    @test result.value == zeros(10, 2)
 end
 
 end
