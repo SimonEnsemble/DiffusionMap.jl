@@ -1,7 +1,7 @@
 name = "DiffusionMap"
 uuid = "809424d5-4f20-4f0f-8853-2ca5e8a82a88"
 authors = ["Cory Simon <cory.simon@oregonstate.edu>", "Adrian Henle <eahenle@gmail.com>", "Gbenga Fabusola <gbengafabusola@gmail.com>"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
