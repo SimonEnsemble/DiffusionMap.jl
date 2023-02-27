@@ -6,9 +6,6 @@ using InteractiveUtils
 
 # ╔═╡ cedad242-4983-11eb-2f32-3d405f151b77
 begin
-	import Pkg; Pkg.activate()
-	push!(LOAD_PATH, "../src")
-	using Revise
 	using DiffusionMap
 	using ManifoldLearning, CairoMakie, Statistics, JLD2, Random, StatsBase, LinearAlgebra, ColorSchemes, PlutoUI, CSV
 end

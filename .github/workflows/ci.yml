@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push: # run on push to main
+    branches: [ main ]
+  pull_request: # run on PR against main
+    branches: [ main ]
+  workflow_dispatch: # run on button-press in Actions tab
+
+concurrency: # only allow the most recent workflow to execute
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs: # run in parallel within workflow
+  unit-and-doc-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps: # run in series within job
+      - name: checkout commit
+        uses: actions/checkout@main
+      - name: set up Julia
+        uses: julia-actions/setup-julia@latest
+        with:
+          version: 'nightly'
+      - name: build package
+        uses: julia-actions/julia-buildpkg@latest
+      - name: test # run the unit tests
+        run: julia --project --color=yes --code-coverage -e 'import Pkg; Pkg.test(coverage=true)'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+      - name: process test coverage
+        uses: julia-actions/julia-processcoverage@v1
+      - name: upload coverage report
+        uses: codecov/codecov-action@v2
+        with:
+          verbose: true  
