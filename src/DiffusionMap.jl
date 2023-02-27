@@ -77,7 +77,7 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
     # the results to "complex" numbers with imaginary components of 0
     for (i, ev) in enumerate(eigen_decomp.values)
         if isa(ev, Complex)
-            @assert imag(ev) ≈ 0
+            @assert isapprox(imag(ev), 0; atol=1e-6)
             eigen_decomp.values[i] = real(ev)
         end
     end
