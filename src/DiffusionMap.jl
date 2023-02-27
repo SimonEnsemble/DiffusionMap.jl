@@ -57,7 +57,7 @@ X = rand(2, 100)
 X̂ = diff_map(X, kernel, 1)
 ```
 """
-function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
+function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1)::Matrix{Float64}
     if size(P)[1] ≠ size(P)[2]
         error("P is not square.")
     end
@@ -70,29 +70,30 @@ function diffusion_map(P::Matrix{Float64}, d::Int; t::Int=1)
 
     # eigen-decomposition of the stochastic matrix
     eigen_decomp = eigen(P)
+	eigenvalues = eigen_decomp.values
 
-    @assert (maximum(abs.(eigen_decomp.values)) - 1.0) < 0.0001 "largest eigenvalue should be 1.0"
+    @assert (maximum(abs.(eigenvalues)) - 1.0) < 0.0001 "largest eigenvalue should be 1.0"
 
     # eigenvalues should all be real numbers, but numerical imprecision can promote
     # the results to "complex" numbers with imaginary components of 0
-    for (i, ev) in enumerate(eigen_decomp.values)
+    for (i, ev) in enumerate(eigenvalues)
         if isa(ev, Complex)
             @assert isapprox(imag(ev), 0; atol=1e-6)
-            eigen_decomp.values[i] = real(ev)
+            eigenvalues[i] = real(ev)
         end
     end
 
     # sort eigenvalues, highest to lowest
     # skip the first eigenvalue
-    idx = sortperm(eigen_decomp.values, rev=true)[2:end]
+    idx = sortperm(Float64.(eigenvalues), rev=true)[2:end]
 
     # get first d eigenvalues and vectors. scale eigenvectors.
-    λs = eigen_decomp.values[idx][1:d]
+    λs = eigenvalues[idx][1:d]
     Vs = eigen_decomp.vectors[:, idx][:, 1:d] * diagm(λs .^ t)
     return Vs
 end
 
-function diffusion_map(X::Matrix{Float64}, kernel::Function, 
+function diffusion_map(X::Matrix{<: Real}, kernel::Function, 
                        d::Int; t::Int=1, verbose::Bool=true)
     if verbose
         println("# features: ", size(X)[1])
@@ -106,7 +107,7 @@ function diffusion_map(X::Matrix{Float64}, kernel::Function,
     return diffusion_map(P, d; t=t)
 end
 
-function pca(X::Matrix{Float64}, d::Int; verbose::Bool=true)
+function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true)
     if verbose
         println("# features: ", size(X)[1])
         println("# examples: ", size(X)[2])
