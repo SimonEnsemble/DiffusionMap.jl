@@ -1,6 +1,8 @@
 module Test_DiffusionMap
 using DiffusionMap, IOCapture, LinearAlgebra, Test
 
+DiffusionMap.banner()
+
 @testset "normalize_to_stochastic_matrix!" begin
     # generate random symmetric matrix
     P = rand(20, 20)
@@ -46,6 +48,14 @@ end
         return pca(ones(10, 10), 2)
     end
     @test result.value == zeros(10, 2)
+end
+
+@testset "example.jl" begin
+    @info "Running example notebook (may take a minute or so)"
+    IOCapture.capture() do
+        include("../example/example.jl")
+    end
+    @test true
 end
 
 end

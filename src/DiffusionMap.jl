@@ -3,6 +3,9 @@ using LinearAlgebra, StatsBase
 
 export normalize_to_stochastic_matrix!, diffusion_map, gaussian_kernel, pca
 
+const BANNER = String(read(joinpath(dirname(pathof(DiffusionMap)), "banner.txt")))
+banner() = println(BANNER)
+
 function gaussian_kernel(xⱼ, xᵢ, ℓ::Real)
     r² = sum((xᵢ - xⱼ) .^ 2)
     return exp(-r² / ℓ ^ 2)
