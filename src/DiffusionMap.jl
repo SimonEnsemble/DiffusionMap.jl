@@ -19,9 +19,8 @@ normalize a kernel matrix `P` so that rows sum to one.
 checks for symmetry.
 """
 function normalize_to_stochastic_matrix!(P::Matrix{<: Real}; check_symmetry::Bool=true)
-    if check_symmetry && !issymmetric(P)
-        error("kernel matrix not symmetric!")
-    end
+    check_symmetry && @assert issymmetric(P) "Kernel matrix must be symmetric."
+    @assert all(P .>= 0.0) "Kernel matrix elements must be non-negative."
     # make sure rows sum to one
     # this is equivalent to P = D⁻¹ * P
     #    with > d = vec(sum(P, dims=1))

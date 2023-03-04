@@ -14,7 +14,7 @@ DiffusionMap.banner()
     # make an assymmetric matrix
     P = P + rand(20, 20)
     # test asymmetry is detected
-    @test_throws ErrorException normalize_to_stochastic_matrix!(P)
+    @test_throws AssertionError normalize_to_stochastic_matrix!(P)
 end
 
 @testset "diffusion_map" verbose=true begin
