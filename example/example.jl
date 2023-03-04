@@ -7,7 +7,7 @@ using InteractiveUtils
 # ╔═╡ cedad242-4983-11eb-2f32-3d405f151b77
 begin
 	using DiffusionMap
-	using ManifoldLearning, CairoMakie, Statistics, JLD2, Random, StatsBase, LinearAlgebra, ColorSchemes, PlutoUI, CSV
+	using CairoMakie, ColorSchemes, ManifoldLearning, PlutoUI, StatsBase
 end
 
 # ╔═╡ 1996b541-e783-4b3a-9f7a-aca380d1047f
