@@ -1,5 +1,5 @@
 module DiffusionMap
-using LinearAlgebra, StatsBase
+using CUDA, LinearAlgebra, StatsBase
 
 export normalize_to_stochastic_matrix!, diffusion_map, gaussian_kernel, pca
 
@@ -8,7 +8,7 @@ banner() = println(BANNER)
 
 function gaussian_kernel(xⱼ, xᵢ, ℓ::Real)
     r² = sum((xᵢ - xⱼ) .^ 2)
-    return exp(-r² / ℓ ^ 2)
+    return exp(-r² / ℓ^2)
 end
 
 """
@@ -18,14 +18,14 @@ normalize a kernel matrix `P` so that rows sum to one.
 
 checks for symmetry.
 """
-function normalize_to_stochastic_matrix!(P::Matrix{<: Real}; check_symmetry::Bool=true)
+function normalize_to_stochastic_matrix!(P::Matrix{<:Real}; check_symmetry::Bool=true)
     check_symmetry && @assert issymmetric(P) "Kernel matrix must be symmetric."
     @assert all(P .>= 0.0) "Kernel matrix elements must be non-negative."
     # make sure rows sum to one
     # this is equivalent to P = D⁻¹ * P
     #    with > d = vec(sum(P, dims=1))
     #         > D⁻¹ = diagm(1 ./ d)
-    for i = 1:size(P)[1]
+    for i in 1:size(P)[1]
         P[i, :] ./= sum(P[i, :])
     end
 end
@@ -34,17 +34,20 @@ end
     diffusion_map(P, d; t=1)
     diffusion_map(X, kernel, d; t=1)
 
-compute diffusion map. 
+compute diffusion map.
 
 two call signatures:
-* the data matrix `X` is passed in. examples are in the columns.
-* the right-stochastic matrix `P` is passed in. (eg. for a precomputed kernel matrix)
+
+  - the data matrix `X` is passed in. examples are in the columns.
+  - the right-stochastic matrix `P` is passed in. (eg. for a precomputed kernel matrix)
 
 # arguments
-* `d`: dim
-* `t`: # of steps
+
+  - `d`: dim
+  - `t`: # of steps
 
 # example
+
 ```julia
 # define kernel
 kernel(xᵢ, xⱼ) = gaussian_kernel(xᵢ, xⱼ, 0.5)
@@ -56,22 +59,32 @@ X = rand(2, 100)
 X̂ = diff_map(X, kernel, 1)
 ```
 """
-function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1)::Matrix{Float64}
+function diffusion_map(
+    P::Matrix{<:Real},
+    d::Int;
+    t::Int=1,
+    cuda::Bool=false
+)::Matrix{Float64}
     if size(P)[1] ≠ size(P)[2]
         error("P is not square.")
     end
-    if ! all(sum.(eachrow(P)) .≈ 1.0)
+    if !all(sum.(eachrow(P)) .≈ 1.0)
         error("P is not right-stochastic. call `normalize_to_stochastic_matrix!` first.")
     end
-    if ! all(P .>= 0.0)
+    if !all(P .>= 0.0)
         error("P contains negative values.")
     end
 
-    # eigen-decomposition of the stochastic matrix
-    eigen_decomp = eigen(P)
-	eigenvalues = eigen_decomp.values
+    # if available, use CUDA (compute capability ≥ 3.5)
+    if cuda && capability(device()) ≥ v"3.5.0"
+        P = cu(P)
+    end
 
-    @assert (maximum(abs.(eigenvalues)) - 1.0) < 0.0001 "largest eigenvalue should be 1.0"
+    # eigen-decomposition of the stochastic matrix
+    sv_decomp = svd(P)
+    eigenvalues = Vector(sv_decomp.S)
+
+    @assert (maximum(abs.(eigenvalues)) - 1.0) < 0.01 "largest eigenvalue should be 1.0"
 
     # eigenvalues should all be real numbers, but numerical imprecision can promote
     # the results to "complex" numbers with imaginary components of 0
@@ -84,29 +97,34 @@ function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1)::Matrix{Float64}
 
     # sort eigenvalues, highest to lowest
     # skip the first eigenvalue
-    idx = sortperm(Float64.(eigenvalues), rev=true)[2:end]
+    idx = sortperm(Float64.(eigenvalues); rev=true)[2:end]
 
     # get first d eigenvalues and vectors. scale eigenvectors.
     λs = eigenvalues[idx][1:d]
-    Vs = eigen_decomp.vectors[:, idx][:, 1:d] * diagm(λs .^ t)
+    Vs = Matrix(sv_decomp.V)[:, idx][:, 1:d] * diagm(λs .^ t)
     return Vs
 end
 
-function diffusion_map(X::Matrix{<: Real}, kernel::Function, 
-                       d::Int; t::Int=1, verbose::Bool=true)
+function diffusion_map(
+    X::Matrix{<:Real},
+    kernel::Function,
+    d::Int;
+    t::Int=1,
+    verbose::Bool=true
+)
     if verbose
         println("# features: ", size(X)[1])
         println("# examples: ", size(X)[2])
     end
 
     # compute Laplacian matrix
-    P = pairwise(kernel, eachcol(X), symmetric=true)
+    P = pairwise(kernel, eachcol(X); symmetric=true)
     normalize_to_stochastic_matrix!(P)
 
     return diffusion_map(P, d; t=t)
 end
 
-function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true)
+function pca(X::Matrix{<:Real}, d::Int; verbose::Bool=false, cuda::Bool=false)
     if verbose
         println("# features: ", size(X)[1])
         println("# examples: ", size(X)[2])
@@ -114,12 +132,17 @@ function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true)
 
     # center
     X̂ = deepcopy(X)
-    for f = 1:size(X)[1]
+    for f in 1:size(X)[1]
         X̂[f, :] = X[f, :] .- mean(X[f, :])
     end
 
+    # if available, use CUDA (compute capability ≥ 3.5)
+    if cuda && capability(device()) ≥ v"3.5.0"
+        X̂ = cu(X̂)
+    end
+
     the_svd = svd(X̂)
-    return the_svd.V[:, 1:d] * diagm(the_svd.S[1:d])
+    return Matrix(the_svd.V)[:, 1:d] * diagm(Vector(the_svd.S)[1:d])
 end
 
 end

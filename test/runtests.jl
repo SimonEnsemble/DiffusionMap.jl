@@ -1,5 +1,5 @@
 module Test_DiffusionMap
-using DiffusionMap, IOCapture, LinearAlgebra, Test
+using CUDA, DiffusionMap, IOCapture, LinearAlgebra, Test
 
 DiffusionMap.banner()
 
@@ -17,7 +17,7 @@ DiffusionMap.banner()
     @test_throws AssertionError normalize_to_stochastic_matrix!(P)
 end
 
-@testset "diffusion_map" verbose=true begin
+@testset "diffusion_map" verbose = true begin
     # function signature 1: diffusion_map(P, d; t=1)
     @testset "matrix P" begin
         # test input validation: non-square matrix P
@@ -44,16 +44,40 @@ end
 
 @testset "pca" begin
     # test a trivial case
-    result = IOCapture.capture() do 
-        return pca(ones(10, 10), 2)
+    result = IOCapture.capture() do
+        return pca(ones(10, 10), 2; verbose=true)
     end
     @test result.value == zeros(10, 2)
+end
+
+@testset "CUDA" begin
+    cuda_capability = IOCapture.capture() do
+        return capability(device())
+    end.value
+    if cuda_capability ≥ v"3.5.0"
+        X = rand(20, 20)
+        X = X + X'
+        @test all(isapprox(abs.(pca(X, 2)), abs.(pca(X, 2; cuda=true)); atol=0.001))
+
+        P = rand(20, 20)
+        P = P + P'
+        normalize_to_stochastic_matrix!(P)
+        @test all(
+            isapprox.(
+                abs.(diffusion_map(P, 2)),
+                abs.(diffusion_map(P, 2; cuda=true));
+                atol=0.001
+            )
+        )
+    else
+        @warn "Skipping CUDA tests." cuda_capability
+    end
 end
 
 @testset "example.jl" begin
     @info "Running example notebook (may take a minute or so)"
     IOCapture.capture() do
-        include("../example/example.jl")
+        return include("../example/example.jl")
     end
     @test true
 end
