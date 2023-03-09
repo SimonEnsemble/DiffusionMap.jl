@@ -74,7 +74,7 @@ function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1, cuda::Bool=false)::
 
     # eigen-decomposition of the stochastic matrix
     sv_decomp = svd(P)
-	eigenvalues = sv_decomp.S
+	eigenvalues = Vector(sv_decomp.S)
 
     @assert (maximum(abs.(eigenvalues)) - 1.0) < 0.01 "largest eigenvalue should be 1.0"
 
@@ -93,7 +93,7 @@ function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1, cuda::Bool=false)::
 
     # get first d eigenvalues and vectors. scale eigenvectors.
     λs = eigenvalues[idx][1:d]
-    Vs = sv_decomp.V[:, idx][:, 1:d] * diagm(λs .^ t)
+    Vs = Matrix(sv_decomp.V)[:, idx][:, 1:d] * diagm(λs .^ t)
     return Vs
 end
 
@@ -111,7 +111,7 @@ function diffusion_map(X::Matrix{<: Real}, kernel::Function,
     return diffusion_map(P, d; t=t)
 end
 
-function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true, cuda::Bool=false)
+function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=false, cuda::Bool=false)
     if verbose
         println("# features: ", size(X)[1])
         println("# examples: ", size(X)[2])
@@ -129,7 +129,7 @@ function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true, cuda::Bool=false)
     end
 
     the_svd = svd(X̂)
-    return the_svd.V[:, 1:d] * diagm(the_svd.S[1:d])
+    return Matrix(the_svd.V)[:, 1:d] * diagm(Vector(the_svd.S)[1:d])
 end
 
 end

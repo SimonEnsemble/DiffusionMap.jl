@@ -45,7 +45,7 @@ end
 @testset "pca" begin
     # test a trivial case
     result = IOCapture.capture() do 
-        return pca(ones(10, 10), 2)
+        return pca(ones(10, 10), 2; verbose=true)
     end
     @test result.value == zeros(10, 2)
 end
@@ -57,12 +57,12 @@ end
     if cuda_capability ≥ v"3.5.0"
         X = rand(20, 20)
         X = X + X'
-        @test pca(X, 2) == pca(x, 2; cuda=true)
+        @test all(isapprox(abs.(pca(X, 2)), abs.(pca(X, 2; cuda=true)); atol=0.001))
 
         P = rand(20, 20)
         P = P + P'
         normalize_to_stochastic_matrix!(P)
-        @test diffusion_map(P, 2) == diffusion_map(P, 2; cuda=true)
+        @test all(isapprox.(abs.(diffusion_map(P, 2)), abs.(diffusion_map(P, 2; cuda=true)); atol=0.001))
     else
         @warn "Skipping CUDA tests." cuda_capability
     end
