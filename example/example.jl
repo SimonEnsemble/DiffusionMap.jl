@@ -124,7 +124,7 @@ viz_graph(X, kernel, "S_curve")
 md"### diff map (success)"
 
 # ╔═╡ 7fbe0950-27de-4969-9962-16080e6908ff
-x̂ = diffusion_map(X, kernel, 1; cuda=true)[:]
+x̂ = diffusion_map(X, kernel, 1)[:]
 
 # ╔═╡ 4311f687-824c-42d4-b0a0-b08945460e76
 color_points(X, x̂, "diff map")
