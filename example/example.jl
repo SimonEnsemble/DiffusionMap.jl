@@ -133,7 +133,7 @@ color_points(X, x̂, "diff map")
 md"### PCA (fails)"
 
 # ╔═╡ 1ec637b9-2279-4b54-b5a5-08445f229ab4
-x̂_pca = pca(collect(X), 1; cuda=true)[:]
+x̂_pca = pca(collect(X), 1)[:]
 
 # ╔═╡ 2aaea099-6f33-4260-bf40-f82644e24eae
 color_points(X, x̂_pca, "PCA")
@@ -151,7 +151,7 @@ X_roll = _X_roll[[1, 3], :] # make 2D
 roll_kernel(xᵢ, xⱼ) = gaussian_kernel(xᵢ, xⱼ, 2.0)
 
 # ╔═╡ 13ff129b-c936-451d-9908-80e840103450
-x̂_roll = diffusion_map(X_roll, roll_kernel, 1; cuda=true)[:]
+x̂_roll = diffusion_map(X_roll, roll_kernel, 1)[:]
 
 # ╔═╡ 62bf2efc-9614-4fbf-bb42-29e33f7d34a1
 viz_graph(X_roll, roll_kernel, "roll")
