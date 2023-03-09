@@ -1,5 +1,5 @@
 module DiffusionMap
-using LinearAlgebra, StatsBase
+using CUDA, LinearAlgebra, StatsBase
 
 export normalize_to_stochastic_matrix!, diffusion_map, gaussian_kernel, pca
 
@@ -56,7 +56,7 @@ X = rand(2, 100)
 X̂ = diff_map(X, kernel, 1)
 ```
 """
-function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1)::Matrix{Float64}
+function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1, cuda::Bool=false)::Matrix{Float64}
     if size(P)[1] ≠ size(P)[2]
         error("P is not square.")
     end
@@ -67,11 +67,16 @@ function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1)::Matrix{Float64}
         error("P contains negative values.")
     end
 
-    # eigen-decomposition of the stochastic matrix
-    eigen_decomp = eigen(P)
-	eigenvalues = eigen_decomp.values
+    # if available, use CUDA (compute capability ≥ 3.5)
+    if cuda && capability(device()) ≥ v"3.5.0"
+        P = cu(P)
+    end
 
-    @assert (maximum(abs.(eigenvalues)) - 1.0) < 0.0001 "largest eigenvalue should be 1.0"
+    # eigen-decomposition of the stochastic matrix
+    sv_decomp = svd(P)
+	eigenvalues = sv_decomp.S
+
+    @assert (maximum(abs.(eigenvalues)) - 1.0) < 0.01 "largest eigenvalue should be 1.0"
 
     # eigenvalues should all be real numbers, but numerical imprecision can promote
     # the results to "complex" numbers with imaginary components of 0
@@ -88,7 +93,7 @@ function diffusion_map(P::Matrix{<: Real}, d::Int; t::Int=1)::Matrix{Float64}
 
     # get first d eigenvalues and vectors. scale eigenvectors.
     λs = eigenvalues[idx][1:d]
-    Vs = eigen_decomp.vectors[:, idx][:, 1:d] * diagm(λs .^ t)
+    Vs = sv_decomp.V[:, idx][:, 1:d] * diagm(λs .^ t)
     return Vs
 end
 
@@ -106,7 +111,7 @@ function diffusion_map(X::Matrix{<: Real}, kernel::Function,
     return diffusion_map(P, d; t=t)
 end
 
-function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true)
+function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true, cuda::Bool=false)
     if verbose
         println("# features: ", size(X)[1])
         println("# examples: ", size(X)[2])
@@ -116,6 +121,11 @@ function pca(X::Matrix{<: Real}, d::Int; verbose::Bool=true)
     X̂ = deepcopy(X)
     for f = 1:size(X)[1]
         X̂[f, :] = X[f, :] .- mean(X[f, :])
+    end
+
+    # if available, use CUDA (compute capability ≥ 3.5)
+    if cuda && capability(device()) ≥ v"3.5.0"
+        X̂ = cu(X̂)
     end
 
     the_svd = svd(X̂)

@@ -1,5 +1,5 @@
 module Test_DiffusionMap
-using DiffusionMap, IOCapture, LinearAlgebra, Test
+using CUDA, DiffusionMap, IOCapture, LinearAlgebra, Test
 
 DiffusionMap.banner()
 
@@ -48,6 +48,24 @@ end
         return pca(ones(10, 10), 2)
     end
     @test result.value == zeros(10, 2)
+end
+
+@testset "CUDA" begin
+    cuda_capability = IOCapture.capture() do
+        return capability(device())
+    end.value
+    if cuda_capability ≥ v"3.5.0"
+        X = rand(20, 20)
+        X = X + X'
+        @test pca(X, 2) == pca(x, 2; cuda=true)
+
+        P = rand(20, 20)
+        P = P + P'
+        normalize_to_stochastic_matrix!(P)
+        @test diffusion_map(P, 2) == diffusion_map(P, 2; cuda=true)
+    else
+        @warn "Skipping CUDA tests." cuda_capability
+    end
 end
 
 @testset "example.jl" begin
