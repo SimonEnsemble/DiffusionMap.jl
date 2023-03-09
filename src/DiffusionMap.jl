@@ -110,7 +110,8 @@ function diffusion_map(
     kernel::Function,
     d::Int;
     t::Int=1,
-    verbose::Bool=true
+    verbose::Bool=true,
+    cuda::Bool=false
 )
     if verbose
         println("# features: ", size(X)[1])
@@ -121,7 +122,7 @@ function diffusion_map(
     P = pairwise(kernel, eachcol(X); symmetric=true)
     normalize_to_stochastic_matrix!(P)
 
-    return diffusion_map(P, d; t=t)
+    return diffusion_map(P, d; t=t, cuda=cuda)
 end
 
 function pca(X::Matrix{<:Real}, d::Int; verbose::Bool=false, cuda::Bool=false)
