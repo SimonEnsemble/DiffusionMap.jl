@@ -52,7 +52,11 @@ end
 
 @testset "CUDA" begin
     cuda_capability = IOCapture.capture() do
-        return capability(device())
+        try
+            return capability(device())
+        catch
+            return v"0.0.0"
+        end
     end.value
     if cuda_capability ≥ v"3.5.0"
         X = rand(20, 20)
